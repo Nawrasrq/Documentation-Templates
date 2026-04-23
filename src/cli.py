@@ -1,8 +1,9 @@
-"""CLI entry point with subcommands: update, create, discover.
+"""CLI entry point with subcommands: update, create, publish, discover.
 
 Usage:
     python -m src.cli update                          # update from last commit
     python -m src.cli create -s docs/my-etl.md -t etl --page-id 123
+    python -m src.cli publish -s docs/my-etl.md --parent-id 525664257
     python -m src.cli discover --space-key ENG
 """
 from __future__ import annotations
@@ -54,13 +55,14 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(
         prog="doc-automation",
-        description="Confluence documentation automation — update, create, and discover pages.",
+        description="Confluence documentation automation — update, create, publish, and discover pages.",
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     _build_update_parser(subparsers)
     _build_create_parser(subparsers)
+    _build_publish_parser(subparsers)
     _build_discover_parser(subparsers)
 
     args = parser.parse_args(argv)
@@ -70,6 +72,7 @@ def main(argv: list[str] | None = None) -> int:
     handlers = {
         "update": _handle_update,
         "create": _handle_create,
+        "publish": _handle_publish,
         "discover": _handle_discover,
     }
     return handlers[args.command](args)
@@ -197,6 +200,63 @@ def _handle_create(args: argparse.Namespace) -> int:
         return 1
 
     action = "Created" if result.created else "Populated"
+    logging.info("%s: %s [%s]", action, result.page_title, result.page_id)
+    return 0
+
+
+# MARK: Publish Subcommand
+
+def _build_publish_parser(subparsers: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
+    p = subparsers.add_parser(
+        "publish", help="Publish a markdown file directly to Confluence (no Claude).",
+    )
+    _add_common_args(p)
+    p.add_argument("-s", "--source", required=True,
+                    help="Path to the markdown file to publish.")
+    p.add_argument("--page-id", default=None,
+                    help="Existing Confluence page ID to overwrite.")
+    p.add_argument("--page-title", default=None,
+                    help="Page title (defaults to first H1 heading or filename).")
+    p.add_argument("--space-key", default=None,
+                    help="Confluence space key (for creating new pages).")
+    p.add_argument("--parent-id", default=None,
+                    help="Parent page/folder ID (for creating under a specific location).")
+    p.add_argument("--dry-run", action="store_true",
+                    help="Convert markdown but don't write to Confluence.")
+
+
+def _handle_publish(args: argparse.Namespace) -> int:
+    from src.publish import publish_page
+
+    cfg = Config.from_env()
+    missing = cfg.validate(needs_confluence=not args.dry_run, needs_claude=False)
+    if missing:
+        logging.error("Missing required environment variables: %s", ", ".join(missing))
+        return 1
+
+    if not args.page_id and not (args.space_key or cfg.confluence_space_key):
+        logging.error("Provide --page-id (to overwrite existing) or --space-key (to create new).")
+        return 1
+
+    try:
+        result = publish_page(
+            cfg,
+            source_path=args.source,
+            page_id=args.page_id,
+            page_title=args.page_title,
+            space_key=args.space_key,
+            parent_id=args.parent_id,
+            dry_run=args.dry_run,
+        )
+    except (ValueError, FileNotFoundError) as exc:
+        logging.error("%s", exc)
+        return 1
+
+    if result.error:
+        logging.error("Failed: %s — %s", result.page_title, result.error)
+        return 1
+
+    action = "Created" if result.created else "Published to"
     logging.info("%s: %s [%s]", action, result.page_title, result.page_id)
     return 0
 

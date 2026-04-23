@@ -1,12 +1,13 @@
 # Documentation Automation
 
-Manage Confluence documentation from the command line — update pages from git changes, create pages from markdown summaries, and discover your Confluence page tree.
+Manage Confluence documentation from the command line — update pages from git changes, create pages from markdown summaries, publish markdown directly, and discover your Confluence page tree.
 
-## Three Commands
+## Four Commands
 
 ```
 update   →  git diff → match files → Claude → surgical Confluence update
 create   →  markdown file + template → Claude → full Confluence page
+publish  →  markdown file → Confluence page (no Claude needed)
 discover →  scan Confluence space → generate docs_map.yml
 ```
 
@@ -22,10 +23,13 @@ cp .env.example .env
 # 3. Discover your Confluence pages (generates config/docs_map.yml)
 python -m src.cli discover --space-key ENG
 
-# 4. Create a page from a markdown summary
+# 4. Publish a markdown file directly to Confluence
+python -m src.cli publish -s docs/my-etl.md --parent-id 525664257 --dry-run
+
+# 5. Create a page from a markdown summary (uses Claude for formatting)
 python -m src.cli create -s docs/my-etl.md -t etl --page-id 123456789 --dry-run
 
-# 5. Update pages from git changes
+# 6. Update pages from git changes
 python -m src.cli update --dry-run
 ```
 
@@ -61,6 +65,23 @@ python -m src.cli create -s docs/my-etl.md -t etl --page-id 123456789 --dry-run
 
 **Template types:** `etl`, `api`, `sql_table`, `tool`
 
+### `publish` — Post markdown directly to Confluence
+
+Converts a markdown file to Confluence storage format and publishes it — no Claude API needed.
+
+```bash
+# Publish to an existing page (overwrites content)
+python -m src.cli publish -s docs/health-monitor-etl-tools.md --page-id 123456789
+
+# Create a new page under a parent folder
+python -m src.cli publish -s docs/health-monitor-etl-tools.md --parent-id 525664257
+
+# Preview the conversion without writing
+python -m src.cli publish -s docs/health-monitor-etl-tools.md --parent-id 525664257 --dry-run
+```
+
+Handles headings, tables, code blocks (with syntax highlighting), lists, bold/italic, and links. Code fences are converted to Confluence `code` macros automatically.
+
 ### `discover` — Map your Confluence space
 
 Walks a Confluence space or page tree and generates `config/docs_map.yml` with all page IDs.
@@ -82,7 +103,7 @@ python -m src.cli discover --space-key ENG -o config/my_map.yml
 
 | Variable | Required | Description |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Yes | Anthropic API key |
+| `ANTHROPIC_API_KEY` | For create/update | Anthropic API key |
 | `CLAUDE_MODEL` | No | Model name (default: `claude-sonnet-4-6`) |
 | `CONFLUENCE_BASE_URL` | Yes | e.g. `https://yoursite.atlassian.net/wiki` |
 | `CONFLUENCE_USER_EMAIL` | Yes | Atlassian account email |
@@ -123,7 +144,7 @@ The `templates/` directory contains Confluence page templates (from your Documen
 
 ### Markdown Summaries
 
-Put your project markdown files in `docs/`. These are the source material for the `create` command:
+Put your project markdown files in `docs/`. These are the source material for the `create` and `publish` commands:
 
 ```
 docs/
@@ -147,9 +168,10 @@ documentation-automation/
 │   ├── sql_table.md
 │   └── tool.md
 ├── src/
-│   ├── cli.py                # CLI with subcommands (update, create, discover)
+│   ├── cli.py                # CLI with subcommands (update, create, publish, discover)
 │   ├── pipeline.py           # Update pipeline orchestration
-│   ├── create.py             # Create pipeline (markdown → Confluence)
+│   ├── create.py             # Create pipeline (markdown + template → Claude → Confluence)
+│   ├── publish.py            # Publish pipeline (markdown → Confluence, no Claude)
 │   ├── discover.py           # Discover pipeline (Confluence → docs_map.yml)
 │   ├── git_client.py         # Local git (subprocess) for change detection
 │   ├── confluence_client.py  # Confluence REST API client
