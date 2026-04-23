@@ -1,0 +1,81 @@
+{
+    // Python Interpreter
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+    "python.terminal.activateEnvironment": true,
+
+    // Testing Configuration
+    "python.testing.pytestArgs": [
+        "tests",
+        "-v",
+        "--cov=src"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "python.testing.autoTestDiscoverOnSaveEnabled": true,
+    "python.testing.cwd": "${workspaceFolder}",
+
+    // Code Formatting & Linting (Ruff)
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+        },
+        "editor.defaultFormatter": "charliermarsh.ruff"
+    },
+
+    // Ruff Configuration
+    "ruff.configurationPreference": "filesystemFirst",
+    "ruff.lineLength": 100,
+    "ruff.organizeImports": true,
+    "ruff.fixAll": true,
+
+    // Type Checking (mypy - strict)
+    "mypy-type-checker.args": [
+        "--config-file=${workspaceFolder}/pyproject.toml"
+    ],
+
+    // Language Server (Pylance - strict)
+    "python.languageServer": "Pylance",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}"
+    ],
+    "python.analysis.typeCheckingMode": "strict",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.completeFunctionParens": true,
+
+    // Editor Settings
+    "editor.rulers": [100],
+    "editor.wordWrap": "off",
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+
+    // File Associations
+    "files.associations": {
+        "*.env.example": "properties",
+        "*.env.template": "properties"
+    },
+
+    // Files to Exclude from Explorer
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/*.egg-info": true,
+        "**/.coverage": true,
+        "**/.ruff_cache": true
+    },
+
+    // Search Exclusions
+    "search.exclude": {
+        "**/logs": true,
+        "**/.venv": true,
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/.ruff_cache": true,
+        "**/htmlcov": true
+    }
+}

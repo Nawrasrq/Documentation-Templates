@@ -1,0 +1,29 @@
+# Virtual environments
+venv/
+.venv/
+
+# Environment files (contains secrets)
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Test coverage
+.coverage
+htmlcov/
+
+# Build artifacts
+dist/
+*.egg-info/
+
+# Logs (generated at runtime)
+logs/
+
+# IDE (track .vscode/ for team consistency)
+.idea/
+*.swp
+*.swo

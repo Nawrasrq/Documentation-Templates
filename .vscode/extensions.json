@@ -1,0 +1,23 @@
+{
+	"recommendations": [
+		// Python Development
+		"ms-python.python",
+		"ms-python.vscode-pylance",
+
+		// Testing
+		"littlefoxteam.vscode-python-test-adapter",
+
+		// Code Quality & Formatting
+		"charliermarsh.ruff",
+		"ms-python.mypy-type-checker",
+
+		// Enhanced Editor Experience
+		"usernamehw.errorlens",
+		"aaron-bond.better-comments",
+		"njpwerner.autodocstring",
+		"kevinrose.vsc-python-indent",
+
+		// Git Integration
+		"eamodio.gitlens"
+	]
+}
