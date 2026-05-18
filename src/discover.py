@@ -92,9 +92,13 @@ def _flatten_tree(node: PageNode, parent_id_override: str | None) -> list[PageMa
         Flat list of page mappings with hierarchy info.
     """
     slug = _slugify(node.title)
-    is_folder = node.content_type == "folder"
+    tags: list[str] = []
+    if node.content_type == "folder":
+        tags.append("folder")
+    if node.status and node.status != "current":
+        tags.append(node.status)
 
-    title_label = f"[folder] {node.title}" if is_folder else node.title
+    title_label = f"[{', '.join(tags)}] {node.title}" if tags else node.title
 
     mappings: list[PageMapping] = [
         PageMapping(
@@ -123,7 +127,12 @@ def print_tree(node: PageNode, indent: int = 0) -> None:
     """
     prefix = "    " * indent
     connector = "├── " if indent > 0 else ""
-    type_tag = " [folder]" if node.content_type == "folder" else ""
+    tags: list[str] = []
+    if node.content_type == "folder":
+        tags.append("folder")
+    if node.status and node.status != "current":
+        tags.append(node.status)
+    type_tag = f" [{', '.join(tags)}]" if tags else ""
     logger.info("%s%s%s [%s]%s", prefix, connector, node.title, node.page_id, type_tag)
     for child in node.children:
         print_tree(child, indent + 1)

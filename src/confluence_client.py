@@ -36,6 +36,8 @@ class PageNode:
         "page" or "folder".
     parent_id : str
         Parent content ID.
+    status : str
+        Content lifecycle status, e.g. "current" or "archived".
     children : list[PageNode]
         Direct children of this node.
     """
@@ -44,6 +46,7 @@ class PageNode:
     title: str
     content_type: str = "page"
     parent_id: str = ""
+    status: str = "current"
     children: list[PageNode] = field(default_factory=list)
 
 
@@ -197,9 +200,9 @@ class ConfluenceClient:
         PageNode
             Tree of nodes with children populated.
         """
-        content_type, title = self._identify_content(root_id)
+        content_type, title, status = self._identify_content(root_id)
         return self._walk_tree(root_id, title=title, content_type=content_type,
-                               parent_id="", depth=0, max_depth=max_depth)
+                               parent_id="", status=status, depth=0, max_depth=max_depth)
 
     def get_space_root_pages(self, space_key: str) -> list[PageNode]:
         """List top-level pages in a Confluence space.
@@ -233,6 +236,7 @@ class ConfluenceClient:
                     page_id=str(result["id"]),
                     title=result["title"],
                     content_type="page",
+                    status=result.get("status", "current"),
                 ))
 
             next_link = data.get("_links", {}).get("next")
@@ -328,7 +332,7 @@ class ConfluenceClient:
 
     # MARK: Helpers
 
-    def _identify_content(self, content_id: str) -> tuple[str, str]:
+    def _identify_content(self, content_id: str) -> tuple[str, str, str]:
         """Determine whether a content ID is a page or folder and get its title.
 
         Parameters
@@ -338,24 +342,27 @@ class ConfluenceClient:
 
         Returns
         -------
-        tuple[str, str]
-            (content_type, title) — content_type is "page" or "folder".
+        tuple[str, str, str]
+            (content_type, title, status) — content_type is "page" or "folder",
+            status is "current", "archived", etc.
         """
         # Try as page first (most common)
         resp = self._session.get(f"{self._v2}/pages/{content_id}")
         if resp.status_code == 200:
-            return "page", resp.json().get("title", "")
+            data = resp.json()
+            return "page", data.get("title", ""), data.get("status", "current")
 
         # Try as folder
         resp = self._session.get(f"{self._v2}/folders/{content_id}")
         if resp.status_code == 200:
-            return "folder", resp.json().get("title", "")
+            data = resp.json()
+            return "folder", data.get("title", ""), data.get("status", "current")
 
         # Fallback to v1 (catches other content types)
         resp = self._session.get(f"{self._v1}/content/{content_id}")
         resp.raise_for_status()
         data = resp.json()
-        return data.get("type", "page"), data.get("title", "")
+        return data.get("type", "page"), data.get("title", ""), data.get("status", "current")
 
     def _paginate_children(self, initial_url: str, parent_id: str) -> list[PageNode]:
         """Fetch all children from a paginated v2 endpoint.
@@ -385,12 +392,14 @@ class ConfluenceClient:
                 child_id = str(result.get("id", ""))
                 child_title = result.get("title", "")
                 child_type = result.get("type", "page")
+                child_status = result.get("status", "current")
 
                 children.append(PageNode(
                     page_id=child_id,
                     title=child_title,
                     content_type=child_type,
                     parent_id=parent_id,
+                    status=child_status,
                 ))
 
             next_link = data.get("_links", {}).get("next")
@@ -408,6 +417,7 @@ class ConfluenceClient:
         title: str,
         content_type: str,
         parent_id: str,
+        status: str,
         depth: int,
         max_depth: int,
     ) -> PageNode:
@@ -427,7 +437,8 @@ class ConfluenceClient:
                         self._walk_tree(
                             child.page_id, title=child.title,
                             content_type=child.content_type,
-                            parent_id=node_id, depth=depth + 1, max_depth=max_depth,
+                            parent_id=node_id, status=child.status,
+                            depth=depth + 1, max_depth=max_depth,
                         )
                     )
 
@@ -436,5 +447,6 @@ class ConfluenceClient:
             title=title,
             content_type=content_type,
             parent_id=parent_id,
+            status=status,
             children=children,
         )
